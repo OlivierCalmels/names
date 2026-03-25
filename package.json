@@ -2,7 +2,7 @@
   "name": "react-gh-pages-boilerplate",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME",
+  "homepage": "https://OlivierCalmels.github.io/names",
   "description": "Boilerplate React (TypeScript) déployable sur GitHub Pages — procédure alignée sur gitname/react-gh-pages.",
   "dependencies": {
     "@testing-library/dom": "^8.20.1",
@@ -16,10 +16,14 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-scripts": "5.0.1",
+    "recharts": "^2.15.4",
+    "sql.js": "^1.14.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "build:data": "node scripts/build-data.mjs",
+    "prebuild": "npm run build:data",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

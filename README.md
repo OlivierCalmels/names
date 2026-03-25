@@ -11,11 +11,13 @@ Boilerplate **React** + **TypeScript** (**Create React App**) prêt pour **GitHu
 - **Git**
 - Un compte **GitHub**
 
+**Remote Git** : ce dépôt utilise `origin` → [https://github.com/OlivierCalmels/names.git](https://github.com/OlivierCalmels/names.git). Pour pointer vers un autre dépôt après coup : `git remote set-url origin https://github.com/UTILISATEUR/REPO.git`.
+
 ## Démarrage rapide
 
 ```bash
-git clone https://github.com/VOTRE_COMPTE/react_gh_page_boilerplate.git
-cd react_gh_page_boilerplate
+git clone https://github.com/OlivierCalmels/names.git
+cd names
 npm install
 npm start
 ```
@@ -40,7 +42,7 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
     https://VOTRE_UTILISATEUR.github.io
     ```
 
-  Remplacez les placeholders `YOUR_GITHUB_USERNAME` et `YOUR_REPO_NAME` déjà présents dans ce boilerplate.
+  Remplacez les placeholders `OlivierCalmels` et `Names` déjà présents dans ce boilerplate.
 
 ### 2. Métadonnées du site
 
@@ -65,11 +67,10 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
 ## Déploiement sur GitHub Pages (résumé)
 
 1. Créez un dépôt vide sur GitHub (ou réutilisez celui où vous avez poussé ce boilerplate).
-2. Dans le clone local, ajoutez le remote si besoin :
-
-   ```bash
-   git remote add origin https://github.com/VOTRE_UTILISATEUR/VOTRE_REPO.git
-   ```
+2. Dans le clone local, configurez `origin` :
+   - **Nouveau clone** : le remote est déjà `https://github.com/OlivierCalmels/names.git`.
+   - **Première fois** : `git remote add origin https://github.com/OlivierCalmels/names.git`
+   - **Remote existant à corriger** : `git remote set-url origin https://github.com/OlivierCalmels/names.git`
 
 3. Vérifiez que **`homepage`** dans `package.json` correspond exactement à l’URL finale du site.
 4. Déployez le build :

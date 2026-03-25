@@ -9,6 +9,9 @@
 # Production
 /build
 
+# Données générées (régénérer avec npm run build:data)
+/public/data/births
+
 # Misc
 .DS_Store
 .env.local
