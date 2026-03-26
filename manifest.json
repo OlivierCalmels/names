@@ -1,6 +1,6 @@
 {
-  "short_name": "RGHP Boilerplate",
-  "name": "React GitHub Pages Boilerplate",
+  "short_name": "Prénoms INSEE",
+  "name": "Prénoms — données INSEE",
   "icons": [],
   "start_url": ".",
   "display": "standalone",
