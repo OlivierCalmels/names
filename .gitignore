@@ -1,0 +1,32 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production
+/build
+
+# Données générées (régénérer avec npm run build:data)
+/public/data/births
+/public/data/births_packed
+
+# Fichier INSEE départemental (trop volumineux ; agréger avec npm run aggregate:csv → data/national_prenoms.csv)
+data/dpt2022.csv
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea
+.vscode
