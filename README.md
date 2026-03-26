@@ -6,8 +6,9 @@ Boilerplate **React** + **TypeScript** (**Create React App**) prêt pour **GitHu
 
 ## Prérequis
 
-- **Node.js** **18+** (LTS recommandée ; le build CRA / ESLint peut échouer en dessous) et **npm**
-  - Un fichier [`.nvmrc`](.nvmrc) est fourni (`18`) : avec [nvm](https://github.com/nvm-sh/nvm), exécutez `nvm use`.
+- **Node.js** **18+** (LTS) et **npm** — obligatoire : sous **Node 14**, ESLint / CRA peut planter avec `Cannot find module 'node:path'`.
+  - Un fichier [`.nvmrc`](.nvmrc) est fourni (`18`) : avec [nvm](https://github.com/nvm-sh/nvm), exécutez `nvm use` dans le dossier du projet avant `npm install` / `npm start`.
+  - Le fichier [`.npmrc`](.npmrc) active `engine-strict=true` : une version de Node incompatible avec `package.json` fera échouer `npm install`.
 - **Git**
 - Un compte **GitHub**
 
@@ -18,6 +19,7 @@ Boilerplate **React** + **TypeScript** (**Create React App**) prêt pour **GitHu
 ```bash
 git clone https://github.com/OlivierCalmels/names.git
 cd names
+nvm use   # ou : nvm use 18 — voir .nvmrc
 npm install
 npm start
 ```
@@ -118,6 +120,7 @@ La page React affiche un **résumé** des étapes ci-dessus (mêmes commandes et
 
 ## Dépannage
 
+- **`Cannot find module 'node:path'` (ESLint / compilation)** : version de Node trop ancienne (p.ex. Node 14). Utilisez **Node 18 LTS** (`nvm use`, voir `.nvmrc`) puis relancez `npm start`. À éviter : désactiver ESLint (`DISABLE_ESLINT_PLUGIN=true`) sauf urgence.
 - **Écran blanc ou assets en 404** sur GitHub Pages : vérifiez que **`homepage`** correspond bien au chemin du site (nom du dépôt inclus pour un site projet).
 - **`npm run deploy` refuse le push** : configurez l’authentification GitHub (HTTPS avec token, ou SSH) et assurez-vous que le remote `origin` pointe vers le bon dépôt.
 
