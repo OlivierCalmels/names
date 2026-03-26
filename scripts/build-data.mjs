@@ -3,6 +3,7 @@
  * - public/data/births (SQLite, sans extension — évite le fallback SPA du dev server sur « . »)
  * - public/data/prenoms (JSON, sans extension)
  * - public/data/depts (JSON, sans extension)
+ * - public/data/records (JSON — agrégats nationaux : records « stock » 70 ans + cumul naissances)
  * - copie node_modules/sql.js/dist/sql-wasm.wasm → public/sqljs/
  *
  * Utilise sql.js (sans addon natif) pour rester portable.
@@ -50,6 +51,103 @@ function locFile(file) {
   return path.join(path.dirname(WASM_SRC), file);
 }
 
+const YEAR_RE = /^\d{4}$/;
+const LIFE_STOCK = 70;
+
+/** @param {Record<number, Record<number, Map<string, number>>>} national */
+function bestTotals(national, sexe) {
+  const totals = new Map();
+  const byYear = national[sexe] || {};
+  for (const y of Object.keys(byYear)) {
+    const m = byYear[y];
+    for (const [p, c] of m) {
+      totals.set(p, (totals.get(p) || 0) + c);
+    }
+  }
+  let bestP = null;
+  let best = -1;
+  for (const [p, t] of totals) {
+    if (t > best || (t === best && bestP != null && p.localeCompare(bestP) < 0)) {
+      best = t;
+      bestP = p;
+    }
+  }
+  return { preusuel: bestP, total: Math.max(0, best) };
+}
+
+/** @param {Record<number, Record<number, Map<string, number>>>} national */
+function stockChampionsByYear(national, sexe, yMin, yMax) {
+  const window = new Map();
+  const out = [];
+  const byYear = national[sexe] || {};
+  for (let T = yMin; T <= yMax; T++) {
+    const addMap = byYear[T];
+    if (addMap) {
+      for (const [p, n] of addMap) {
+        window.set(p, (window.get(p) || 0) + n);
+      }
+    }
+    const rem = T - LIFE_STOCK;
+    if (rem >= yMin && byYear[rem]) {
+      for (const [p, n] of byYear[rem]) {
+        const v = (window.get(p) || 0) - n;
+        if (v <= 0) window.delete(p);
+        else window.set(p, v);
+      }
+    }
+    let bestP = null;
+    let bestV = -1;
+    for (const [p, v] of window) {
+      if (v > bestV || (v === bestV && bestP != null && p.localeCompare(bestP) < 0)) {
+        bestV = v;
+        bestP = p;
+      }
+    }
+    out.push({
+      year: T,
+      preusuel: bestV < 0 ? null : bestP,
+      stock: Math.max(0, bestV),
+    });
+  }
+  return out;
+}
+
+/** @param {Record<number, Record<number, Map<string, number>>>} national */
+function writeRecordsFromNational(national, outDir) {
+  const allYears = new Set();
+  for (const s of [1, 2]) {
+    const byYear = national[s] || {};
+    for (const k of Object.keys(byYear)) allYears.add(parseInt(k, 10));
+  }
+  if (allYears.size === 0) {
+    console.warn("Aucune année pour l’agrégat national ; fichier records ignoré.");
+    return;
+  }
+  const yMin = Math.min(...allYears);
+  const yMax = Math.max(...allYears);
+  const boys = stockChampionsByYear(national, 1, yMin, yMax);
+  const girls = stockChampionsByYear(national, 2, yMin, yMax);
+  const stockChampionByYear = boys.map((b, i) => ({
+    year: b.year,
+    "1": { preusuel: b.preusuel, stock: b.stock },
+    "2": { preusuel: girls[i].preusuel, stock: girls[i].stock },
+  }));
+  const payload = {
+    lifeYears: LIFE_STOCK,
+    yearMin: yMin,
+    yearMax: yMax,
+    description:
+      "France entière (tous départements additionnés). À l’année T, le « stock » d’un prénom est la somme des naissances de ce prénom et du même sexe sur les 70 années T-69 … T (personnes supposées vivantes 70 ans). Les prénoms agrégés (_PRENOMS_RARES) sont exclus.",
+    mostGivenSince1900: {
+      "1": bestTotals(national, 1),
+      "2": bestTotals(national, 2),
+    },
+    stockChampionByYear,
+  };
+  writeFileSync(path.join(outDir, "records"), JSON.stringify(payload), "utf8");
+  console.log(`OK — records nationaux → ${path.join(outDir, "records")}`);
+}
+
 async function main() {
   if (!existsSync(CSV_PATH)) {
     console.error(`Fichier CSV introuvable : ${CSV_PATH}`);
@@ -84,6 +182,8 @@ async function main() {
 
   const prenoms = new Set();
   const depts = new Set();
+  /** @type {Record<number, Record<number, Map<string, number>>>} */
+  const national = { 1: {}, 2: {} };
 
   const rl = createInterface({
     input: createReadStream(CSV_PATH, { encoding: "utf8" }),
@@ -119,6 +219,13 @@ async function main() {
     if (preusuel && preusuel !== "_PRENOMS_RARES") prenoms.add(preusuel);
     if (dpt) depts.add(dpt);
 
+    if (YEAR_RE.test(annais) && preusuel !== "_PRENOMS_RARES") {
+      const y = parseInt(annais, 10);
+      if (!national[sexe][y]) national[sexe][y] = new Map();
+      const nm = national[sexe][y];
+      nm.set(preusuel, (nm.get(preusuel) || 0) + nombre);
+    }
+
     batch.push([sexe, preusuel, annais, dpt, nombre]);
     if (batch.length >= BATCH_SIZE) flush();
   }
@@ -136,6 +243,8 @@ async function main() {
 
   writeFileSync(path.join(OUT_DIR, "prenoms"), JSON.stringify(prenomsSorted), "utf8");
   writeFileSync(path.join(OUT_DIR, "depts"), JSON.stringify(deptsSorted), "utf8");
+
+  writeRecordsFromNational(national, OUT_DIR);
 
   console.log(
     `OK — ${lineNo - 1} lignes lues, ${prenomsSorted.length} prénoms, ${deptsSorted.length} codes département.`,

@@ -5,35 +5,78 @@
 }
 
 .header {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: #64748b;
 }
 
+.eyebrow-inner {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+  color: #3730a3;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.eyebrow-sep {
+  display: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+@media (min-width: 480px) {
+  .eyebrow-sep {
+    display: block;
+  }
+}
+
 .title {
-  margin: 0 0 0.5rem;
-  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.45rem, 4.2vw, 2rem);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
   color: #0f172a;
 }
 
 .lead {
   margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.55;
+  max-width: 52rem;
+  font-size: 0.98rem;
+  line-height: 1.65;
   color: #475569;
+}
+
+.lead strong {
+  font-weight: 600;
+  color: #334155;
 }
 
 .lead code {
   font-size: 0.88em;
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .banner {
@@ -227,4 +270,149 @@
 
 .footer a:hover {
   text-decoration: underline;
+}
+
+/* —— Navigation multi-pages —— */
+
+.app-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  margin: 0 auto 0.5rem;
+  max-width: 1100px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.app-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0.35rem 1rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+}
+
+.app-nav-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.app-nav-link--active {
+  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+  color: #312e81;
+}
+
+/* —— Page Records —— */
+
+.records-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .records-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.records-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.records-card-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.records-card-name {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.25rem, 4vw, 1.65rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.records-card-metric {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.records-section-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.records-section-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #64748b;
+  max-width: 52rem;
+}
+
+.records-table-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  margin-bottom: 1.5rem;
+}
+
+.records-table-wrap {
+  overflow: auto;
+  max-height: min(70vh, 560px);
+  margin: 0 -0.25rem;
+  border-radius: 8px;
+}
+
+.records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.records-table th,
+.records-table td {
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.records-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  font-weight: 600;
+  color: #334155;
+  z-index: 1;
+}
+
+.records-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.records-table-num {
+  font-variant-numeric: tabular-nums;
+  color: #475569;
+  white-space: nowrap;
 }

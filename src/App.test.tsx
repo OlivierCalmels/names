@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import App from "./App";
+import ChartsPage from "./ChartsPage";
 
 jest.mock("./sqlAssets", () => ({
   SQLJS_PACKAGE_VERSION: "1.14.1",
@@ -38,9 +38,9 @@ beforeEach(() => {
 });
 
 test("affiche le titre principal", async () => {
-  render(<App />);
+  render(<ChartsPage />);
   expect(
-    screen.getByRole("heading", { name: /occurrences de prénoms dans le temps/i }),
+    screen.getByRole("heading", { name: /la popularité des prénoms au fil des années/i }),
   ).toBeInTheDocument();
   await waitFor(() => {
     expect(screen.getByLabelText(/filtres et sélection de prénoms/i)).toBeInTheDocument();
