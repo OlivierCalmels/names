@@ -11,6 +11,10 @@
 
 # Données générées (régénérer avec npm run build:data)
 /public/data/births
+/public/data/births_packed
+
+# Fichier INSEE départemental (trop volumineux ; agréger avec npm run aggregate:csv → data/national_prenoms.csv)
+data/dpt2022.csv
 
 # Misc
 .DS_Store

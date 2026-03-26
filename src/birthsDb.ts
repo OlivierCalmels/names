@@ -9,7 +9,6 @@ export function queryNameSeries(
   db: SqlDb,
   prenom: string,
   sexe: "" | "1" | "2",
-  dpt: string,
 ): YearCount[] {
   let sql =
     "SELECT annais, SUM(nombre) AS total FROM births WHERE preusuel = ? AND annais GLOB '[0-9][0-9][0-9][0-9]'";
@@ -17,10 +16,6 @@ export function queryNameSeries(
   if (sexe !== "") {
     sql += " AND sexe = ?";
     params.push(parseInt(sexe, 10));
-  }
-  if (dpt !== "") {
-    sql += " AND dpt = ?";
-    params.push(dpt);
   }
   sql += " GROUP BY annais ORDER BY annais";
 

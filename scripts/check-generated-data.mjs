@@ -1,6 +1,6 @@
 /**
  * Vérifie que les sorties de build:data existent, ne sont pas vides,
- * et ne sont pas plus anciennes que data/dpt2022.csv.
+ * et ne sont pas plus anciennes que data/national_prenoms.csv.
  *
  * Contourner le hook : git commit --no-verify
  */
@@ -11,19 +11,19 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
-const CSV = path.join(ROOT, "data", "dpt2022.csv");
+const CSV = path.join(ROOT, "data", "national_prenoms.csv");
 
 const OUTPUTS = [
   ["public/data/prenoms", "liste prénoms"],
-  ["public/data/depts", "liste départements"],
   ["public/data/records", "agrégats records"],
-  ["public/data/births", "base SQLite (births)"],
+  ["public/data/births_packed", "base SQLite gzip (births_packed)"],
   ["public/sqljs/sql-wasm.wasm", "WebAssembly sql.js"],
 ];
 
 function main() {
   if (!fs.existsSync(CSV)) {
-    console.error(`\n✖ Source CSV introuvable : ${path.relative(ROOT, CSV)}\n`);
+    console.error(`\n✖ Source CSV introuvable : ${path.relative(ROOT, CSV)}`);
+    console.error("  → npm run aggregate:csv (depuis le fichier INSEE départemental)\n");
     process.exit(1);
   }
 
@@ -59,7 +59,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log("✓ Données générées présentes et à jour par rapport à data/dpt2022.csv");
+  console.log("✓ Données générées présentes et à jour par rapport à data/national_prenoms.csv");
 }
 
 main();

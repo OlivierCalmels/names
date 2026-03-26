@@ -1,10 +1,13 @@
 /**
- * Lit data/dpt2022.csv (INSEE) et produit :
- * - public/data/births (SQLite, sans extension — évite le fallback SPA du dev server sur « . »)
+ * Lit data/national_prenoms.csv (INSEE agrégé France entière, 4 colonnes)
+ * et produit :
+ * - public/data/births_packed (SQLite gzip)
  * - public/data/prenoms (JSON, sans extension)
- * - public/data/depts (JSON, sans extension)
- * - public/data/records (JSON — agrégats nationaux : records « stock » 70 ans + cumul naissances)
+ * - public/data/records (agrégats nationaux : records « stock » 70 ans + cumul naissances)
  * - copie node_modules/sql.js/dist/sql-wasm.wasm → public/sqljs/
+ *
+ * Pour regénérer le CSV national à partir du fichier départemental :
+ *   npm run aggregate:csv
  *
  * Utilise sql.js (sans addon natif) pour rester portable.
  */
@@ -21,31 +24,22 @@ import {
 import { createInterface } from "readline";
 import path from "path";
 import { fileURLToPath } from "url";
+import { constants as zlibConstants, gzipSync } from "zlib";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
-const CSV_PATH = path.join(ROOT, "data", "dpt2022.csv");
+const CSV_PATH =
+  process.env.NATIONAL_CSV || path.join(ROOT, "data", "national_prenoms.csv");
 const OUT_DIR = path.join(ROOT, "public", "data");
 const SQLJS_PUBLIC = path.join(ROOT, "public", "sqljs");
-const DB_PATH = path.join(OUT_DIR, "births");
+const BIRTHS_PACKED_PATH = path.join(OUT_DIR, "births_packed");
+const LEGACY_UNCOMPRESSED_BIRTHS = path.join(OUT_DIR, "births");
 const LEGACY_DB_PATH = path.join(OUT_DIR, "births.sqlite");
 const LEGACY_PRENOMS_JSON = path.join(OUT_DIR, "prenoms.json");
 const LEGACY_DEPTS_JSON = path.join(OUT_DIR, "depts.json");
+const DEPTS_STATIC = path.join(OUT_DIR, "depts");
 const WASM_SRC = path.join(ROOT, "node_modules", "sql.js", "dist", "sql-wasm.wasm");
 const WASM_DST = path.join(SQLJS_PUBLIC, "sql-wasm.wasm");
-
-function sortDeptCodes(a, b) {
-  const norm = (x) => {
-    if (/^\d+$/.test(x)) return [0, parseInt(x, 10)];
-    if (/^\d+[AB]$/.test(x)) return [1, x];
-    return [2, x];
-  };
-  const [ta, va] = norm(a);
-  const [tb, vb] = norm(b);
-  if (ta !== tb) return ta - tb;
-  if (typeof va === "number" && typeof vb === "number") return va - vb;
-  return String(va).localeCompare(String(vb), "fr");
-}
 
 function locFile(file) {
   return path.join(path.dirname(WASM_SRC), file);
@@ -137,7 +131,7 @@ function writeRecordsFromNational(national, outDir) {
     yearMin: yMin,
     yearMax: yMax,
     description:
-      "France entière (tous départements additionnés). À l’année T, le « stock » d’un prénom est la somme des naissances de ce prénom et du même sexe sur les 70 années T-69 … T (personnes supposées vivantes 70 ans). Les prénoms agrégés (_PRENOMS_RARES) sont exclus.",
+      "France entière (fichier national agrégé, sans granularité département). À l’année T, le « stock » d’un prénom est la somme des naissances de ce prénom et du même sexe sur les 70 années T-69 … T (personnes supposées vivantes 70 ans). Les prénoms agrégés (_PRENOMS_RARES) sont exclus.",
     mostGivenSince1900: {
       "1": bestTotals(national, 1),
       "2": bestTotals(national, 2),
@@ -151,6 +145,7 @@ function writeRecordsFromNational(national, outDir) {
 async function main() {
   if (!existsSync(CSV_PATH)) {
     console.error(`Fichier CSV introuvable : ${CSV_PATH}`);
+    console.error("Depuis le fichier INSEE départemental (dpt*.csv) : npm run aggregate:csv");
     process.exit(1);
   }
   if (!existsSync(WASM_SRC)) {
@@ -165,6 +160,8 @@ async function main() {
   if (existsSync(LEGACY_DB_PATH)) unlinkSync(LEGACY_DB_PATH);
   if (existsSync(LEGACY_PRENOMS_JSON)) unlinkSync(LEGACY_PRENOMS_JSON);
   if (existsSync(LEGACY_DEPTS_JSON)) unlinkSync(LEGACY_DEPTS_JSON);
+  if (existsSync(LEGACY_UNCOMPRESSED_BIRTHS)) unlinkSync(LEGACY_UNCOMPRESSED_BIRTHS);
+  if (existsSync(DEPTS_STATIC)) unlinkSync(DEPTS_STATIC);
   copyFileSync(WASM_SRC, WASM_DST);
 
   const SQL = await initSqlJs({ locateFile: locFile });
@@ -175,13 +172,11 @@ async function main() {
       sexe INTEGER NOT NULL,
       preusuel TEXT NOT NULL,
       annais TEXT NOT NULL,
-      dpt TEXT NOT NULL,
       nombre INTEGER NOT NULL
     );
   `);
 
   const prenoms = new Set();
-  const depts = new Set();
   /** @type {Record<number, Record<number, Map<string, number>>>} */
   const national = { 1: {}, 2: {} };
 
@@ -198,7 +193,7 @@ async function main() {
     if (batch.length === 0) return;
     db.run("BEGIN");
     const stmt = db.prepare(
-      "INSERT INTO births (sexe, preusuel, annais, dpt, nombre) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO births (sexe, preusuel, annais, nombre) VALUES (?, ?, ?, ?)",
     );
     for (const row of batch) stmt.run(row);
     stmt.free();
@@ -210,14 +205,13 @@ async function main() {
     lineNo += 1;
     if (lineNo === 1) continue;
     const parts = line.split(";");
-    if (parts.length < 5) continue;
-    const [sexeStr, preusuel, annais, dpt, nombreStr] = parts;
+    if (parts.length < 4) continue;
+    const [sexeStr, preusuel, annais, nombreStr] = parts;
     const sexe = parseInt(sexeStr, 10);
     const nombre = parseInt(nombreStr, 10);
     if (Number.isNaN(sexe) || Number.isNaN(nombre)) continue;
 
     if (preusuel && preusuel !== "_PRENOMS_RARES") prenoms.add(preusuel);
-    if (dpt) depts.add(dpt);
 
     if (YEAR_RE.test(annais) && preusuel !== "_PRENOMS_RARES") {
       const y = parseInt(annais, 10);
@@ -226,7 +220,7 @@ async function main() {
       nm.set(preusuel, (nm.get(preusuel) || 0) + nombre);
     }
 
-    batch.push([sexe, preusuel, annais, dpt, nombre]);
+    batch.push([sexe, preusuel, annais, nombre]);
     if (batch.length >= BATCH_SIZE) flush();
   }
 
@@ -235,21 +229,20 @@ async function main() {
   db.run("CREATE INDEX idx_births_preusuel ON births(preusuel)");
 
   const binary = db.export();
-  writeFileSync(DB_PATH, Buffer.from(binary));
+  const packed = gzipSync(Buffer.from(binary), { level: zlibConstants.Z_BEST_COMPRESSION });
+  writeFileSync(BIRTHS_PACKED_PATH, packed);
   db.close();
 
   const prenomsSorted = [...prenoms].sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
-  const deptsSorted = [...depts].sort(sortDeptCodes);
 
   writeFileSync(path.join(OUT_DIR, "prenoms"), JSON.stringify(prenomsSorted), "utf8");
-  writeFileSync(path.join(OUT_DIR, "depts"), JSON.stringify(deptsSorted), "utf8");
 
   writeRecordsFromNational(national, OUT_DIR);
 
+  console.log(`OK — ${lineNo - 1} lignes lues, ${prenomsSorted.length} prénoms (France entière).`);
   console.log(
-    `OK — ${lineNo - 1} lignes lues, ${prenomsSorted.length} prénoms, ${deptsSorted.length} codes département.`,
+    `SQLite gzip : ${BIRTHS_PACKED_PATH} (${(packed.length / (1024 * 1024)).toFixed(1)} Mo)`,
   );
-  console.log(`SQLite : ${DB_PATH}`);
 }
 
 main().catch((err) => {

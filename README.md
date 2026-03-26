@@ -60,8 +60,9 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
 | Commande          | Description |
 |-------------------|-------------|
 | `npm start`       | Serveur de développement (CRA). |
-| `npm run build:data` | Regénère `public/data/*`, `public/sqljs/sql-wasm.wasm` et la base SQLite depuis `data/dpt2022.csv` (Node 18+). |
-| `npm run check:data` | Vérifie que ces fichiers existent et ne sont pas plus anciens que le CSV (utilisé par le hook pre-commit). |
+| `npm run aggregate:csv` | Lit le fichier INSEE **départemental** (`data/dpt2022.csv` par défaut) et écrit `data/national_prenoms.csv` (sommes par sexe, prénom, année). |
+| `npm run build:data` | Regénère `public/data/*`, `public/sqljs/sql-wasm.wasm` et la base SQLite depuis `data/national_prenoms.csv` (Node 18+). |
+| `npm run check:data` | Vérifie que ces fichiers existent et ne sont pas plus anciens que `data/national_prenoms.csv` (hook pre-commit). |
 | `npm run build`   | Build de production dans `build/` (lance d’abord `build:data` via `prebuild`). |
 | `npm test`        | Tests (CRA / Jest). |
 | `npm run deploy`  | Build puis déploiement sur la branche `gh-pages` via le paquet `gh-pages`. |
@@ -70,7 +71,7 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
 
 ### Hook Git pre-commit
 
-Après `npm install`, le script `prepare` enregistre `core.hooksPath=githooks` pour ce dépôt. Avant chaque commit, **`npm run check:data`** contrôle que les sorties de `build:data` sont présentes et à jour par rapport à `data/dpt2022.csv`. Pour ignorer ponctuellement : `git commit --no-verify`.
+Après `npm install`, le script `prepare` enregistre `core.hooksPath=githooks` pour ce dépôt. Avant chaque commit, **`npm run check:data`** contrôle que les sorties de `build:data` sont présentes et à jour par rapport à `data/national_prenoms.csv`. Pour ignorer ponctuellement : `git commit --no-verify`.
 
 ## Déploiement sur GitHub Pages (résumé)
 
@@ -88,6 +89,8 @@ Après `npm install`, le script `prepare` enregistre `core.hooksPath=githooks` p
    ```
 
    Cela crée ou met à jour la branche **`gh-pages`** avec le contenu de **`build/`**.
+
+   La base SQLite est servie sous forme **gzip** (`births_packed`) pour rester **sous la limite GitHub de 100 Mo par fichier**. Si le push échoue encore avec une erreur HTTP 400 / `send-pack`, essayez : `git config http.postBuffer 524288000`.
 
 5. Sur GitHub : **Settings → Pages** → **Build and deployment** :
    - **Source** : *Deploy from a branch*
@@ -122,7 +125,7 @@ La page React affiche un **résumé** des étapes ci-dessus (mêmes commandes et
 
 - **`Cannot find module 'node:path'` (ESLint / compilation)** : version de Node trop ancienne (p.ex. Node 14). Utilisez **Node 18 LTS** (`nvm use`, voir `.nvmrc`) puis relancez `npm start`. À éviter : désactiver ESLint (`DISABLE_ESLINT_PLUGIN=true`) sauf urgence.
 - **Écran blanc ou assets en 404** sur GitHub Pages : vérifiez que **`homepage`** correspond bien au chemin du site (nom du dépôt inclus pour un site projet).
-- **`npm run deploy` refuse le push** : configurez l’authentification GitHub (HTTPS avec token, ou SSH) et assurez-vous que le remote `origin` pointe vers le bon dépôt.
+- **`npm run deploy` / push `gh-pages` en échec** : limite GitHub **100 Mo par fichier** (d’où la base en **gzip** `births_packed`) ; en HTTPS, erreur **HTTP 400** possible → `git config http.postBuffer 524288000`, ou remote en **SSH**. Vérifiez aussi l’authentification (token, SSH).
 
 ## Licence
 

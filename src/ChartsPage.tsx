@@ -40,12 +40,10 @@ export default function ChartsPage() {
   const [loadingDb, setLoadingDb] = useState(true);
 
   const [prenoms, setPrenoms] = useState<string[]>([]);
-  const [depts, setDepts] = useState<string[]>([]);
   const [listsError, setListsError] = useState<string | null>(null);
   const [loadingLists, setLoadingLists] = useState(true);
 
   const [sexe, setSexe] = useState<"" | "1" | "2">("");
-  const [dpt, setDpt] = useState<string>("");
   const [nameInput, setNameInput] = useState("");
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [nameHint, setNameHint] = useState<string | null>(null);
@@ -87,19 +85,12 @@ export default function ChartsPage() {
       setListsError(null);
       try {
         const base = PUBLIC_URL.replace(/\/$/, "");
-        const [pRes, dRes] = await Promise.all([
-          fetch(`${base}/data/prenoms`),
-          fetch(`${base}/data/depts`),
-        ]);
-        if (!pRes.ok || !dRes.ok) {
-          throw new Error("Listes prénoms / départements introuvables. Lancez npm run build:data.");
+        const pRes = await fetch(`${base}/data/prenoms`);
+        if (!pRes.ok) {
+          throw new Error("Liste prénoms introuvable. Lancez npm run build:data.");
         }
         const prenomsJson = (await pRes.json()) as string[];
-        const deptsJson = (await dRes.json()) as string[];
-        if (!cancelled) {
-          setPrenoms(prenomsJson);
-          setDepts(deptsJson);
-        }
+        if (!cancelled) setPrenoms(prenomsJson);
       } catch (e) {
         if (!cancelled) setListsError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -115,10 +106,10 @@ export default function ChartsPage() {
     if (!db || selectedNames.length === 0) return [];
     const series = new Map<string, ReturnType<typeof queryNameSeries>>();
     for (const name of selectedNames) {
-      series.set(name, queryNameSeries(db, name, sexe, dpt));
+      series.set(name, queryNameSeries(db, name, sexe));
     }
     return mergeChartRows(selectedNames, series);
-  }, [db, selectedNames, sexe, dpt]);
+  }, [db, selectedNames, sexe]);
 
   const suggestions = useMemo(() => {
     const t = nameInput.trim().toLowerCase();
@@ -164,13 +155,14 @@ export default function ChartsPage() {
         <p className="eyebrow">
           <span className="eyebrow-inner">Open data INSEE</span>
           <span className="eyebrow-sep" aria-hidden="true" />
-          <span>Prénoms par département — dpt2022.csv</span>
+          <span>France entière — national_prenoms.csv</span>
         </p>
         <h1 className="title">La popularité des prénoms au fil des années</h1>
         <p className="lead">
           Superposez jusqu’à <strong>{MAX_NAMES} prénoms</strong> sur un même graphique pour comparer
-          leur évolution. Filtrez éventuellement par sexe (1 = garçons, 2 = filles) et par
-          département — ou laissez ces champs vides pour tout le territoire. Les années non
+          leur évolution. Filtrez éventuellement par sexe (1 = garçons, 2 = filles) ou laissez le
+          champ vide pour tous les sexes. Les données sont nationales (agrégat sans département).
+          Les années non
           renseignées dans la source (<code>XXXX</code>) sont ignorées sur l’axe du temps.
         </p>
       </header>
@@ -197,22 +189,6 @@ export default function ChartsPage() {
             </select>
           </label>
 
-          <label className="field">
-            <span className="field-label">Département</span>
-            <select
-              className="field-input"
-              value={dpt}
-              onChange={(e) => setDpt(e.target.value)}
-              disabled={!dataReady}
-            >
-              <option value="">Tous</option>
-              {depts.map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
 
         <div className="name-row">

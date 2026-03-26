@@ -25,9 +25,6 @@ const mockFetch = () => {
     if (u.includes("/data/prenoms")) {
       return new Response(JSON.stringify(["MARIE", "JEAN"]), { status: 200 });
     }
-    if (u.includes("/data/depts")) {
-      return new Response(JSON.stringify(["75", "92"]), { status: 200 });
-    }
     return new Response("", { status: 404 });
   };
   return jest.fn(impl);

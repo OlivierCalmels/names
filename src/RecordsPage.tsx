@@ -37,7 +37,7 @@ export default function RecordsPage() {
         <p className="eyebrow">
           <span className="eyebrow-inner">Open data INSEE</span>
           <span className="eyebrow-sep" aria-hidden="true" />
-          <span>Agrégat national · dpt2022.csv</span>
+          <span>Agrégat national · national_prenoms.csv</span>
         </p>
         <h1 className="title">Records & portrait « stock » des prénoms</h1>
         <p className="lead">

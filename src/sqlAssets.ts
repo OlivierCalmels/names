@@ -66,25 +66,40 @@ export async function initSqlFromWasm(publicUrl: string) {
   return initSqlJs({ wasmBinary });
 }
 
-/** Fichier sans extension pour éviter le fallback SPA du webpack-dev-server sur les chemins avec « . ». */
+async function gunzipArrayBuffer(compressed: ArrayBuffer): Promise<ArrayBuffer> {
+  /* Typings DOM CRA / TS 4.x : DecompressionStream non déclaré ; l’API existe sur les navigateurs récents. */
+  const ctor = (globalThis as unknown as { DecompressionStream?: new (format: string) => unknown })
+    .DecompressionStream;
+  if (typeof ctor !== "function") {
+    throw new Error(
+      "Ce navigateur ne décompresse pas gzip (DecompressionStream). Mettez à jour le navigateur.",
+    );
+  }
+  const ds = new ctor("gzip");
+  const decompressed = new Blob([compressed]).stream().pipeThrough(ds as never);
+  return new Response(decompressed).arrayBuffer();
+}
+
+/** SQLite gzip (public/data/births_packed), sans « . » dans le nom pour le dev CRA. */
 export async function fetchBirthsDatabase(publicUrl: string): Promise<ArrayBuffer> {
   const base = publicBase(publicUrl);
-  const url = `${base}/data/births`;
+  const url = `${base}/data/births_packed`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(
       `Base des prénoms introuvable (${res.status}). Exécutez npm run build:data (Node 18+).`,
     );
   }
-  const buf = await res.arrayBuffer();
-  if (isLikelyHtmlDocument(buf)) {
+  const packed = await res.arrayBuffer();
+  if (isLikelyHtmlDocument(packed)) {
     throw new Error(
-      "La base a renvoyé du HTML au lieu du fichier SQLite (souvent un « fallback » en développement). Rechargez après npm run build:data ; le fichier doit être public/data/births.",
+      "La base a renvoyé du HTML au lieu du fichier compressé. Rechargez après npm run build:data (public/data/births_packed).",
     );
   }
+  const buf = await gunzipArrayBuffer(packed);
   if (!isLikelySqliteDb(buf)) {
     throw new Error(
-      "Le fichier public/data/births n’est pas une base SQLite valide. Régénérez-le avec npm run build:data.",
+      "Après décompression, le fichier n’est pas une base SQLite valide. Régénérez avec npm run build:data.",
     );
   }
   return buf;
