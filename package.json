@@ -24,7 +24,9 @@
   },
   "scripts": {
     "build:data": "node scripts/build-data.mjs",
+    "check:data": "node scripts/check-generated-data.mjs",
     "prebuild": "npm run build:data",
+    "prepare": "node scripts/setup-git-hooks.mjs",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

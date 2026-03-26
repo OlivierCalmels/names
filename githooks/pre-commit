@@ -1,0 +1,13 @@
+#!/bin/sh
+# Vérifie les données générées avant chaque commit.
+# Ignorer : git commit --no-verify
+
+set -e
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+cd "$ROOT" || exit 1
+
+if [ -f package.json ] && command -v npm >/dev/null 2>&1; then
+  npm run check:data
+else
+  node scripts/check-generated-data.mjs
+fi

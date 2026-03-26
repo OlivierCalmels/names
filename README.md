@@ -55,14 +55,20 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
 
 ## Scripts npm
 
-| Commande        | Description |
-|-----------------|-------------|
-| `npm start`     | Serveur de développement (CRA). |
-| `npm run build` | Build de production dans `build/`. |
-| `npm test`      | Tests (CRA / Jest). |
-| `npm run deploy`| Build puis déploiement sur la branche `gh-pages` via le paquet `gh-pages`. |
+| Commande          | Description |
+|-------------------|-------------|
+| `npm start`       | Serveur de développement (CRA). |
+| `npm run build:data` | Regénère `public/data/*`, `public/sqljs/sql-wasm.wasm` et la base SQLite depuis `data/dpt2022.csv` (Node 18+). |
+| `npm run check:data` | Vérifie que ces fichiers existent et ne sont pas plus anciens que le CSV (utilisé par le hook pre-commit). |
+| `npm run build`   | Build de production dans `build/` (lance d’abord `build:data` via `prebuild`). |
+| `npm test`        | Tests (CRA / Jest). |
+| `npm run deploy`  | Build puis déploiement sur la branche `gh-pages` via le paquet `gh-pages`. |
 
 `predeploy` exécute automatiquement `npm run build` avant `deploy`, comme dans [gitname/react-gh-pages](https://github.com/gitname/react-gh-pages).
+
+### Hook Git pre-commit
+
+Après `npm install`, le script `prepare` enregistre `core.hooksPath=githooks` pour ce dépôt. Avant chaque commit, **`npm run check:data`** contrôle que les sorties de `build:data` sont présentes et à jour par rapport à `data/dpt2022.csv`. Pour ignorer ponctuellement : `git commit --no-verify`.
 
 ## Déploiement sur GitHub Pages (résumé)
 
