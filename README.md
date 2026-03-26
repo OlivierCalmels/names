@@ -124,6 +124,7 @@ La page React affiche un **résumé** des étapes ci-dessus (mêmes commandes et
 ## Dépannage
 
 - **`Cannot find module 'node:path'` (ESLint / compilation)** : version de Node trop ancienne (p.ex. Node 14). Utilisez **Node 18 LTS** (`nvm use`, voir `.nvmrc`) puis relancez `npm start`. À éviter : désactiver ESLint (`DISABLE_ESLINT_PLUGIN=true`) sauf urgence.
+- **Vous voyez tout le README (prérequis, table des commandes…) au lieu de l’app** : c’est en général la **page du dépôt** sur GitHub (`github.com/…/names`), qui affiche `README.md`. L’**application** est sur **`https://<utilisateur>.github.io/names/`** avec cette URL de base ; avec le routage par hash, l’accueil est souvent **`…/names/#/`**. Dans **Settings → Pages**, la source doit être la branche **`gh-pages`**, dossier **`/` (root)**.
 - **Écran blanc ou assets en 404** sur GitHub Pages : vérifiez que **`homepage`** correspond bien au chemin du site (nom du dépôt inclus pour un site projet).
 - **`npm run deploy` / push `gh-pages` en échec** : limite GitHub **100 Mo par fichier** (d’où la base en **gzip** `births_packed`). Si le push échoue avec **`RPC failed; HTTP 400`** / **`send-pack`** / *remote end hung up* : le module **`gh-pages` pousse depuis un clone en cache** (`node_modules/.cache/...`) ; augmentez le buffer **(souvent nécessaire en `--global`)** : `git config --global http.postBuffer 524288000`, puis `npm run gh-pages-clean` et `npm run deploy`. Sinon : passer **`origin` en SSH** (`git@github.com:…`) au lieu d’HTTPS, ou vérifier token / accès au dépôt.
 

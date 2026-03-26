@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "homepage": "https://OlivierCalmels.github.io/names",
-  "description": "Boilerplate React (TypeScript) déployable sur GitHub Pages — procédure alignée sur gitname/react-gh-pages.",
+  "description": "Visualisation open data INSEE des prénoms en France (graphiques, records) — React, GitHub Pages.",
   "dependencies": {
     "@testing-library/dom": "^8.20.1",
     "@testing-library/jest-dom": "^5.17.0",
