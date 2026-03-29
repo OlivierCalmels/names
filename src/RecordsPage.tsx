@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import { displayPrenom } from "./prenomDisplay";
 import type { RecordsPayload } from "./recordsTypes";
 
 const PUBLIC_URL = process.env.PUBLIC_URL ?? "";
@@ -63,7 +64,9 @@ export default function RecordsPage() {
           <section className="records-cards" aria-label="Records cumulés">
             <article className="records-card">
               <h2 className="records-card-title">Garçons — naissances cumulées</h2>
-              <p className="records-card-name">{data.mostGivenSince1900["1"].preusuel ?? "—"}</p>
+              <p className="records-card-name">
+                {displayPrenom(data.mostGivenSince1900["1"].preusuel)}
+              </p>
               <p className="records-card-metric">
                 {data.mostGivenSince1900["1"].total.toLocaleString("fr-FR")} naissances ({data.yearMin}–
                 {data.yearMax})
@@ -71,7 +74,9 @@ export default function RecordsPage() {
             </article>
             <article className="records-card">
               <h2 className="records-card-title">Filles — naissances cumulées</h2>
-              <p className="records-card-name">{data.mostGivenSince1900["2"].preusuel ?? "—"}</p>
+              <p className="records-card-name">
+                {displayPrenom(data.mostGivenSince1900["2"].preusuel)}
+              </p>
               <p className="records-card-metric">
                 {data.mostGivenSince1900["2"].total.toLocaleString("fr-FR")} naissances ({data.yearMin}–
                 {data.yearMax})
@@ -100,9 +105,9 @@ export default function RecordsPage() {
                   {[...data.stockChampionByYear].reverse().map((row) => (
                     <tr key={row.year}>
                       <td>{row.year}</td>
-                      <td>{row["1"].preusuel ?? "—"}</td>
+                      <td>{displayPrenom(row["1"].preusuel)}</td>
                       <td className="records-table-num">{row["1"].stock.toLocaleString("fr-FR")}</td>
-                      <td>{row["2"].preusuel ?? "—"}</td>
+                      <td>{displayPrenom(row["2"].preusuel)}</td>
                       <td className="records-table-num">{row["2"].stock.toLocaleString("fr-FR")}</td>
                     </tr>
                   ))}

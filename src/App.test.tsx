@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ChartsPage from "./ChartsPage";
 
 jest.mock("./sqlAssets", () => ({
@@ -34,8 +35,18 @@ beforeEach(() => {
   global.fetch = mockFetch() as typeof fetch;
 });
 
+function renderCharts(initialPath = "/") {
+  return render(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <Routes>
+        <Route path="/" element={<ChartsPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 test("affiche le titre principal", async () => {
-  render(<ChartsPage />);
+  renderCharts();
   expect(
     screen.getByRole("heading", { name: /la popularité des prénoms au fil des années/i }),
   ).toBeInTheDocument();
@@ -44,5 +55,13 @@ test("affiche le titre principal", async () => {
   });
   await waitFor(() => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+test("restaure les prénoms depuis les paramètres d’URL", async () => {
+  renderCharts("/?n=MARIE&n=JEAN");
+  await waitFor(() => {
+    expect(screen.getByText("Marie")).toBeInTheDocument();
+    expect(screen.getByText("Jean")).toBeInTheDocument();
   });
 });

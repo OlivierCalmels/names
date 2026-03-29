@@ -23,8 +23,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "aggregate:csv": "node scripts/aggregate-csv-national.mjs",
-    "build:data": "node scripts/build-data.mjs",
+    "aggregate:csv": "node scripts/check-node-version.mjs && node scripts/aggregate-csv-national.mjs",
+    "build:data": "node scripts/check-node-version.mjs && node scripts/build-data.mjs",
     "check:data": "node scripts/check-generated-data.mjs",
     "prebuild": "npm run build:data",
     "prepare": "node scripts/setup-git-hooks.mjs",

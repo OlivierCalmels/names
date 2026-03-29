@@ -6,9 +6,16 @@ Boilerplate **React** + **TypeScript** (**Create React App**) prêt pour **GitHu
 
 ## Prérequis
 
-- **Node.js** **18+** (LTS) et **npm** — obligatoire : sous **Node 14**, ESLint / CRA peut planter avec `Cannot find module 'node:path'`.
-  - Un fichier [`.nvmrc`](.nvmrc) est fourni (`18`) : avec [nvm](https://github.com/nvm-sh/nvm), exécutez `nvm use` dans le dossier du projet avant `npm install` / `npm start`.
+- **Node.js** **18+** (LTS) et **npm** — obligatoire pour tout le projet, en particulier **`npm run build`**, **`npm run build:data`** et **`npm run deploy`** : la dépendance **sql.js** (et les scripts `*.mjs`) exigent un Node récent. Avec **Node 14** ou autre version &lt; 18, vous obtiendrez entre autres **`SyntaxError: Unexpected token '||='`** dans `sql-wasm.js`.
+  - Un fichier [`.nvmrc`](.nvmrc) est fourni (`18`) : avec [nvm](https://github.com/nvm-sh/nvm), placez-vous dans le dossier du projet puis :
+    ```bash
+    nvm use                    # ou : nvm install 18 && nvm use 18
+    node -v                    # doit afficher v18.x ou supérieur
+    ```
+    Tant que **`node -v`** n’affiche pas au moins **v18**, ne lancez pas le build ni le déploiement : utilisez **`nvm use`** dans **chaque** terminal ou configurez votre IDE pour utiliser ce Node.
+  - Avant **`npm run deploy`**, les mêmes vérifications s’appliquent (voir la section [Déploiement](#déploiement-sur-github-pages)).
   - Le fichier [`.npmrc`](.npmrc) active `engine-strict=true` : une version de Node incompatible avec `package.json` fera échouer `npm install`.
+  - Sous **Node 14**, ESLint / CRA peut aussi planter avec `Cannot find module 'node:path'` — même remède : passer à Node 18+.
 - **Git**
 - Un compte **GitHub**
 
@@ -53,7 +60,7 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
 
 ### 3. Contenu
 
-- `src/App.tsx` et `src/App.css` — page d’accueil (actuellement un résumé visuel du README).
+- `src/` — application (graphiques prénoms, page Records), styles dans `App.css`.
 
 ## Scripts npm
 
@@ -65,65 +72,71 @@ L’application s’ouvre sur [http://localhost:3000](http://localhost:3000).
 | `npm run check:data` | Vérifie que ces fichiers existent et ne sont pas plus anciens que `data/national_prenoms.csv` (hook pre-commit). |
 | `npm run build`   | Build de production dans `build/` (lance d’abord `build:data` via `prebuild`). |
 | `npm test`        | Tests (CRA / Jest). |
-| `npm run deploy`  | Build puis déploiement sur la branche `gh-pages` via le paquet `gh-pages`. |
+| `npm run deploy`  | Build puis envoi du dossier `build/` sur la branche `gh-pages` (site public GitHub Pages). |
+| `npm run gh-pages-clean` | Supprime le cache local du paquet `gh-pages` (à utiliser si `deploy` échoue avec *branch … already exists*). |
 
-`predeploy` exécute automatiquement `npm run build` avant `deploy`, comme dans [gitname/react-gh-pages](https://github.com/gitname/react-gh-pages).
+`predeploy` exécute automatiquement `npm run build` avant `deploy`, comme dans [gitname/react-gh-pages](https://github.com/gitname/react-gh-pages). `build` déclenche au passage `build:data` (`prebuild`).
 
 ### Hook Git pre-commit
 
 Après `npm install`, le script `prepare` enregistre `core.hooksPath=githooks` pour ce dépôt. Avant chaque commit, **`npm run check:data`** contrôle que les sorties de `build:data` sont présentes et à jour par rapport à `data/national_prenoms.csv`. Pour ignorer ponctuellement : `git commit --no-verify`.
 
-## Déploiement sur GitHub Pages (résumé)
+## Déploiement sur GitHub Pages
 
-1. Créez un dépôt vide sur GitHub (ou réutilisez celui où vous avez poussé ce boilerplate).
-2. Dans le clone local, configurez `origin` :
-   - **Nouveau clone** : le remote est déjà `https://github.com/OlivierCalmels/names.git`.
-   - **Première fois** : `git remote add origin https://github.com/OlivierCalmels/names.git`
-   - **Remote existant à corriger** : `git remote set-url origin https://github.com/OlivierCalmels/names.git`
+### À chaque mise en ligne du site (après vos changements)
 
-3. Vérifiez que **`homepage`** dans `package.json` correspond exactement à l’URL finale du site.
-4. Déployez le build :
+1. **Obligatoire : Node 18+** dans ce terminal. Le build exécute **sql.js** ; un Node trop ancien provoque une erreur du type **`Unexpected token '||='`**. Depuis la racine du dépôt :
+   ```bash
+   nvm use                    # ou : nvm install 18 && nvm use 18
+   node -v                    # doit afficher v18.x ou plus — sinon corrigez avant la suite
+   ```
+   Le script **`scripts/check-node-version.mjs`** est lancé automatiquement avant **`build:data`** : s’il affiche un message d’erreur, c’est que ce **`node`** n’est pas le bon.
+
+2. Déployez (build + push de `build/` vers la branche **`gh-pages`**) :
 
    ```bash
    npm run deploy
    ```
 
-   Cela crée ou met à jour la branche **`gh-pages`** avec le contenu de **`build/`**.
+   Cette commande enchaîne **`predeploy`** → `npm run build` (dont **`build:data`** + génération SQLite) → publication via **`gh-pages`**.
 
-   La base SQLite est servie sous forme **gzip** (`births_packed`) pour rester **sous la limite GitHub de 100 Mo par fichier**. Si le push échoue encore avec une erreur HTTP 400 / `send-pack`, essayez : `git config http.postBuffer 524288000`.
+3. Sur GitHub : **Settings → Pages** → **Build and deployment** :
+   - **Source** : *Deploy from a branch* (pas « GitHub Actions » pour ce flux).
+   - **Branch** : **`gh-pages`**, dossier **`/ (root)`** — **pas** la branche `main` : sinon ce n’est pas le build CRA qui sert le site.
 
-5. Sur GitHub : **Settings → Pages** → **Build and deployment** :
-   - **Source** : *Deploy from a branch*
-   - **Branch** : `gh-pages`, dossier **`/ (root)`**
+4. Ouvrez l’URL indiquée par **`homepage`** dans `package.json` (ex. `https://OlivierCalmels.github.io/names/` — graphiques souvent en `…/names/#/`).
 
-6. (Recommandé) Versionnez le code source sur la branche principale :
+Le code source peut continuer à vivre sur **`main`** : `git push origin main` met à jour le dépôt, mais **ne met pas à jour le site** tant que vous n’avez pas refait **`npm run deploy`**.
 
-   ```bash
-   git add .
-   git commit -m "Configure le projet pour GitHub Pages"
-   git push -u origin main
-   ```
+### Première configuration du dépôt
 
-   (Utilisez `master` si c’est la branche par défaut de votre dépôt.)
+1. Créez ou réutilisez un dépôt GitHub ; configurez **`origin`** si besoin (`git remote add` / `set-url`).
+2. Vérifiez que **`homepage`** dans `package.json` correspond **exactement** à l’URL publique du site (chemin du repo inclus pour un site *projet*).
 
-Après quelques instants, le site est disponible à l’URL définie dans **`homepage`**.
+### Si `npm run deploy` échoue
+
+- **`fatal: A branch named 'gh-pages' already exists`** (cache `gh-pages` corrompu) : `npm run gh-pages-clean`, puis `npm run deploy`.
+- **`RPC failed; HTTP 400`** / **`send-pack`** en HTTPS : `git config --global http.postBuffer 524288000`, puis `npm run gh-pages-clean` et `npm run deploy` ; ou passez **`origin` en SSH** (`git@github.com:…`).
+
+La base SQLite est servie en **gzip** (`births_packed`) pour rester sous la **limite GitHub de 100 Mo par fichier**.
 
 ## Vérifier le build en local
 
+Même exigence **Node 18+** que pour le déploiement (`nvm use`, puis `node -v`).
+
 ```bash
+nvm use
+node -v   # v18.x ou plus
 npm run build
 npx serve -s build
 ```
 
 (Sans `serve` : `npx serve -s build` au besoin.) Ouvrez l’URL indiquée pour un aperçu proche de la production.
 
-## Page d’accueil
-
-La page React affiche un **résumé** des étapes ci-dessus (mêmes commandes et même ordre logique) avec un lien vers le tutoriel [gitname/react-gh-pages](https://github.com/gitname/react-gh-pages).
-
 ## Dépannage
 
 - **`Cannot find module 'node:path'` (ESLint / compilation)** : version de Node trop ancienne (p.ex. Node 14). Utilisez **Node 18 LTS** (`nvm use`, voir `.nvmrc`) puis relancez `npm start`. À éviter : désactiver ESLint (`DISABLE_ESLINT_PLUGIN=true`) sauf urgence.
+- **`SyntaxError: Unexpected token '||='`** dans `sql-wasm.js` lors de **`npm run build`** / **`npm run deploy`** : le **`node`** invoqué n’est pas en **18+** (souvent un Node système 14 tandis que le terminal n’a pas chargé nvm). Vérifiez avec **`node -v`**, puis **`nvm use 18`** (ou **`nvm use`**) dans le dossier du projet avant `npm run deploy`. Le projet exécute désormais **`scripts/check-node-version.mjs`** avant `build:data` pour afficher ce rappel explicitement.
 - **Vous voyez tout le README (prérequis, table des commandes…) au lieu de l’app** : c’est en général la **page du dépôt** sur GitHub (`github.com/…/names`), qui affiche `README.md`. L’**application** est sur **`https://<utilisateur>.github.io/names/`** avec cette URL de base ; avec le routage par hash, l’accueil est souvent **`…/names/#/`**. Dans **Settings → Pages**, la source doit être la branche **`gh-pages`**, dossier **`/` (root)**.
 - **Écran blanc ou assets en 404** sur GitHub Pages : vérifiez que **`homepage`** correspond bien au chemin du site (nom du dépôt inclus pour un site projet).
 - **`npm run deploy` / push `gh-pages` en échec** : limite GitHub **100 Mo par fichier** (d’où la base en **gzip** `births_packed`). Si le push échoue avec **`RPC failed; HTTP 400`** / **`send-pack`** / *remote end hung up* : le module **`gh-pages` pousse depuis un clone en cache** (`node_modules/.cache/...`) ; augmentez le buffer **(souvent nécessaire en `--global`)** : `git config --global http.postBuffer 524288000`, puis `npm run gh-pages-clean` et `npm run deploy`. Sinon : passer **`origin` en SSH** (`git@github.com:…`) au lieu d’HTTPS, ou vérifier token / accès au dépôt.

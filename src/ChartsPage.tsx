@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   CartesianGrid,
   Legend,
@@ -16,10 +17,37 @@ import {
   resolvePrenom,
   type SqlDb,
 } from "./birthsDb";
+import { displayPrenom } from "./prenomDisplay";
 import { fetchBirthsDatabase, initSqlFromWasm } from "./sqlAssets";
 
 const PUBLIC_URL = process.env.PUBLIC_URL ?? "";
 const MAX_NAMES = 10;
+const SUGGESTIONS_DEBOUNCE_MS = 1000;
+
+function parseNamesFromSearchParams(searchParams: URLSearchParams, prenoms: string[]): string[] {
+  const raw = searchParams.getAll("n");
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const q of raw) {
+    const decoded = q.replace(/\+/g, " ");
+    const r = resolvePrenom(decoded, prenoms);
+    if (r != null && !seen.has(r)) {
+      seen.add(r);
+      out.push(r);
+      if (out.length >= MAX_NAMES) break;
+    }
+  }
+  return out;
+}
+
+function buildChartSearchParams(names: string[], sexeVal: "" | "1" | "2") {
+  const p = new URLSearchParams();
+  for (const name of names) {
+    p.append("n", name);
+  }
+  if (sexeVal === "1" || sexeVal === "2") p.set("s", sexeVal);
+  return p;
+}
 
 const LINE_COLORS = [
   "#2563eb",
@@ -35,6 +63,10 @@ const LINE_COLORS = [
 ];
 
 export default function ChartsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const skipUrlWrite = useRef(0);
+  const didHydrateFromUrl = useRef(false);
+
   const [db, setDb] = useState<SqlDb | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingDb, setLoadingDb] = useState(true);
@@ -45,8 +77,20 @@ export default function ChartsPage() {
 
   const [sexe, setSexe] = useState<"" | "1" | "2">("");
   const [nameInput, setNameInput] = useState("");
+  const [debouncedNameInput, setDebouncedNameInput] = useState("");
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [nameHint, setNameHint] = useState<string | null>(null);
+  /** Pointeur grossier (tactile) : placer le tooltip au-dessus du doigt. */
+  const [coarsePointer, setCoarsePointer] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(pointer: coarse)");
+    const sync = () => setCoarsePointer(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +146,16 @@ export default function ChartsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const t = nameInput.trim();
+    if (t === "") {
+      setDebouncedNameInput("");
+      return;
+    }
+    const id = window.setTimeout(() => setDebouncedNameInput(nameInput), SUGGESTIONS_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [nameInput]);
+
   const chartRows = useMemo(() => {
     if (!db || selectedNames.length === 0) return [];
     const series = new Map<string, ReturnType<typeof queryNameSeries>>();
@@ -112,7 +166,7 @@ export default function ChartsPage() {
   }, [db, selectedNames, sexe]);
 
   const suggestions = useMemo(() => {
-    const t = nameInput.trim().toLowerCase();
+    const t = debouncedNameInput.trim().toLowerCase();
     if (t.length < 1 || prenoms.length === 0) return [];
     const out: string[] = [];
     for (const p of prenoms) {
@@ -122,7 +176,7 @@ export default function ChartsPage() {
       }
     }
     return out;
-  }, [nameInput, prenoms]);
+  }, [debouncedNameInput, prenoms]);
 
   const tryAddName = useCallback(() => {
     setNameHint(null);
@@ -132,7 +186,7 @@ export default function ChartsPage() {
       return;
     }
     if (selectedNames.includes(resolved)) {
-      setNameHint(`« ${resolved} » est déjà affiché.`);
+      setNameHint(`« ${displayPrenom(resolved)} » est déjà affiché.`);
       return;
     }
     if (selectedNames.length >= MAX_NAMES) {
@@ -149,6 +203,43 @@ export default function ChartsPage() {
 
   const dataReady = Boolean(db && prenoms.length > 0 && !listsError);
 
+  /**
+   * Hydratation unique depuis l’URL au premier chargement de la liste INSEE.
+   * Paramètres : n (répétable), s (1 | 2) pour le sexe.
+   */
+  useEffect(() => {
+    if (prenoms.length === 0 || listsError || didHydrateFromUrl.current) return;
+    didHydrateFromUrl.current = true;
+
+    const fromUrl = parseNamesFromSearchParams(searchParams, prenoms);
+    const sRaw = searchParams.get("s");
+    let touchesUrlState = false;
+    if (fromUrl.length > 0) {
+      setSelectedNames(fromUrl);
+      touchesUrlState = true;
+    }
+    if (sRaw === "1" || sRaw === "2") {
+      setSexe(sRaw);
+      touchesUrlState = true;
+    }
+    if (touchesUrlState) skipUrlWrite.current += 1;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- lecture initiale des params au chargement des prénoms
+  }, [prenoms, listsError]);
+
+  /** Synchronise l’URL avec la sélection (évite d’écraser l’URL juste après hydratation). */
+  useEffect(() => {
+    if (!dataReady) return;
+    if (skipUrlWrite.current > 0) {
+      skipUrlWrite.current -= 1;
+      return;
+    }
+
+    const next = buildChartSearchParams(selectedNames, sexe);
+    if (next.toString() === searchParams.toString()) return;
+
+    setSearchParams(next, { replace: true });
+  }, [dataReady, searchParams, selectedNames, sexe, setSearchParams]);
+
   return (
     <div className="app">
       <header className="header">
@@ -160,10 +251,12 @@ export default function ChartsPage() {
         <h1 className="title">La popularité des prénoms au fil des années</h1>
         <p className="lead">
           Superposez jusqu’à <strong>{MAX_NAMES} prénoms</strong> sur un même graphique pour comparer
-          leur évolution. Filtrez éventuellement par sexe (1 = garçons, 2 = filles) ou laissez le
+          leur évolution. Filtrez éventuellement par sexe (garçons ou filles) ou laissez le
           champ vide pour tous les sexes. Les données sont nationales (agrégat sans département).
           Les années non
-          renseignées dans la source (<code>XXXX</code>) sont ignorées sur l’axe du temps.
+          renseignées dans la source (<code>XXXX</code>) sont ignorées sur l’axe du temps.{" "}
+          <strong>L’adresse de la page</strong> (après le <code>#</code>) mémorise les prénoms et le
+          filtre sexe pour un lien partageable.
         </p>
       </header>
 
@@ -184,8 +277,8 @@ export default function ChartsPage() {
               disabled={!dataReady}
             >
               <option value="">Tous</option>
-              <option value="1">Garçon (1)</option>
-              <option value="2">Fille (2)</option>
+              <option value="1">Garçon</option>
+              <option value="2">Fille</option>
             </select>
           </label>
 
@@ -210,7 +303,7 @@ export default function ChartsPage() {
             />
             <datalist id="prenoms-datalist">
               {suggestions.slice(0, 15).map((p) => (
-                <option key={p} value={p} />
+                <option key={p} value={displayPrenom(p)} />
               ))}
             </datalist>
           </label>
@@ -224,8 +317,13 @@ export default function ChartsPage() {
           <ul className="chips" aria-label="Prénoms sélectionnés">
             {selectedNames.map((n) => (
               <li key={n} className="chip">
-                <span>{n}</span>
-                <button type="button" className="chip-remove" onClick={() => removeName(n)} aria-label={`Retirer ${n}`}>
+                <span>{displayPrenom(n)}</span>
+                <button
+                  type="button"
+                  className="chip-remove"
+                  onClick={() => removeName(n)}
+                  aria-label={`Retirer ${displayPrenom(n)}`}
+                >
                   ×
                 </button>
               </li>
@@ -251,9 +349,12 @@ export default function ChartsPage() {
                 <XAxis dataKey="year" tick={{ fontSize: 11 }} tickMargin={8} />
                 <YAxis tick={{ fontSize: 11 }} tickMargin={8} width={48} />
                 <Tooltip
+                  offset={coarsePointer ? 28 : 10}
+                  reverseDirection={coarsePointer ? { x: false, y: true } : { x: false, y: false }}
+                  allowEscapeViewBox={{ x: true, y: true }}
                   formatter={(value: number, name: string) => [
                     value.toLocaleString("fr-FR"),
-                    name,
+                    displayPrenom(name),
                   ]}
                   labelFormatter={(y) => `Année ${y}`}
                 />
@@ -263,7 +364,7 @@ export default function ChartsPage() {
                     key={name}
                     type="monotone"
                     dataKey={name}
-                    name={name}
+                    name={displayPrenom(name)}
                     stroke={LINE_COLORS[i % LINE_COLORS.length]}
                     strokeWidth={2}
                     dot={false}
